@@ -120,7 +120,7 @@ class FunctionRunnerApp:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # === Frist Row Frame ===
+        # === First Row Frame ===
         first_row_frame = ttk.Frame(main_frame)
         first_row_frame.pack(pady=10)
         # === Control Frame ===
@@ -253,6 +253,15 @@ class FunctionRunnerApp:
         # Bind to the configure event to update the scrollregion when the content changes
         self.functions_canvas.bind("<Configure>", on_canvas_configure)
 
+        # Enable mouse wheel scrolling for Windows
+        def on_mouse_wheel(event):
+            # Only scroll if the canvas or its children have focus
+            if self.functions_canvas.winfo_viewable():
+                self.functions_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        # Bind mouse wheel event to the main_frame to capture scroll over the canvas area
+        main_frame.bind_all("<MouseWheel>", on_mouse_wheel)
+
         # Ensure functions_outer_frame expands properly
         functions_outer_frame.grid_rowconfigure(0, weight=1)
         functions_outer_frame.grid_columnconfigure(0, weight=1)
@@ -260,6 +269,13 @@ class FunctionRunnerApp:
     @log_entry_exit
     def update_scrollregion(self):
         self.functions_canvas.configure(scrollregion=self.functions_canvas.bbox("all"))
+
+    @log_entry_exit
+    def update_order_file(self):
+        # update .order file
+        with open(ORDER_FILE, "w") as f:
+            for row in self.function_rows:
+                f.write(row["filename"] + "\n")
 
     @log_entry_exit
     def load_window_size(self):
@@ -282,6 +298,7 @@ class FunctionRunnerApp:
 
     @log_entry_exit
     def on_close(self):
+        self.update_order_file()
         self.save_window_size()
         self.root.destroy()
 
@@ -306,6 +323,8 @@ class FunctionRunnerApp:
         self.function_rows = []
         for idx, filename in enumerate(ordered_files, start=1):
             self.add_function_row(idx, filename)
+
+        self.update_order_file()
         self.reload_order()
 
     @log_entry_exit
@@ -566,9 +585,8 @@ class FunctionRunnerApp:
                 os.rename(old_path, new_path)
                 print(f"Renamed {old_name} → {new_name}")
                 row["filename"] = new_name
-        with open(ORDER_FILE, "w") as f:
-            for row in self.function_rows:
-                f.write(row["filename"] + "\n")
+
+        self.update_order_file()
         print("Functions saved:", [row["filename"] for row in self.function_rows])
 
 
