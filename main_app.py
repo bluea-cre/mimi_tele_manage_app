@@ -3,6 +3,8 @@ import importlib.util
 import tkinter as tk
 from tkinter import ttk, messagebox
 import functools
+import argparse
+
 
 FUNCTIONS_DIR = "functions"
 ORDER_FILE = os.path.join(FUNCTIONS_DIR, ".order")
@@ -24,6 +26,10 @@ highlight_color = [
     "\033[96m",  # Light Cyan
 ]
 reset_color = "\033[0m"  # Reset to normal color
+
+
+def empty_function():
+    print("Empty function\n")
 
 
 def log_entry_exit(func):
@@ -92,10 +98,16 @@ class FunctionRunnerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Function Runner App")
+
         self.function_files = []
         self.function_rows = []
+
         self.edit_mode = False
         self.selected_row = None  # Track the currently focused row
+        self.is_sorted_asc = (
+            True  # Biến trạng thái để kiểm tra thứ tự sắp xếp (tăng dần hoặc giảm dần)
+        )
+
         self.create_widgets()
         self.load_functions()
 
@@ -136,27 +148,32 @@ class FunctionRunnerApp:
         move_frame.pack(pady=5)
 
         self.btn_move_up = ttk.Button(
-            move_frame, text="↑", width=10, command=self.move_up
+            move_frame, text="↑", width=6, command=self.move_up
         )
         self.btn_move_up.grid(row=0, column=0, padx=1)
         self.btn_move_down = ttk.Button(
-            move_frame, text="↓", width=10, command=self.move_down
+            move_frame, text="↓", width=6, command=self.move_down
         )
         self.btn_move_down.grid(row=0, column=1, padx=1)
         self.btn_move_top = ttk.Button(
-            move_frame, text="⇈", width=10, command=self.move_top
+            move_frame, text="⇈", width=6, command=self.move_top
         )
         self.btn_move_top.grid(row=0, column=2, padx=1)
         self.btn_move_bottom = ttk.Button(
-            move_frame, text="⇊", width=10, command=self.move_bottom
+            move_frame, text="⇊", width=6, command=self.move_bottom
         )
         self.btn_move_bottom.grid(row=0, column=3, padx=1)
+        self.btn_sort_alpha = ttk.Button(
+            move_frame, text="Alphabet Sort", command=self.sort_alphabet
+        )
+        self.btn_sort_alpha.grid(row=0, column=4, padx=5)
 
         self.move_buttons = [
             self.btn_move_up,
             self.btn_move_down,
             self.btn_move_top,
             self.btn_move_bottom,
+            self.btn_sort_alpha,
         ]
         for btn in self.move_buttons:
             btn.state(["disabled"])  # Initially disabled
@@ -326,6 +343,18 @@ class FunctionRunnerApp:
             self.reload_order()
 
     @log_entry_exit
+    def sort_alphabet(self):
+        if messagebox.askyesno("Sort by Alphabet", "Bạn có chắc muốn sắp xếp?"):
+            # Kiểm tra xem danh sách hiện tại đã được sắp xếp theo thứ tự tăng dần hay chưa
+            if self.is_sorted_asc:
+                self.function_files.sort(reverse=True)  # Sắp xếp giảm dần
+                self.is_sorted_asc = False  # Cập nhật trạng thái sắp xếp
+            else:
+                self.function_files.sort()  # Sắp xếp tăng dần
+                self.is_sorted_asc = True  # Cập nhật trạng thái sắp xếp
+            self.reload_order()
+
+    @log_entry_exit
     def reload_order(self):
         # Configure style for highlighted frame
         style = ttk.Style()
@@ -398,6 +427,12 @@ class FunctionRunnerApp:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    args = parser.parse_args()
+
+    DEBUG_LOG = args.debug
+
     try:
         root = tk.Tk()
         app = FunctionRunnerApp(root)
