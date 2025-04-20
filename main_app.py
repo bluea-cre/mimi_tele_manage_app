@@ -257,7 +257,9 @@ class FunctionRunnerApp:
         def on_mouse_wheel(event):
             # Only scroll if the canvas or its children have focus
             if self.functions_canvas.winfo_viewable():
-                self.functions_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                self.functions_canvas.yview_scroll(
+                    int(-1 * (event.delta / 120)), "units"
+                )
 
         # Bind mouse wheel event to the main_frame to capture scroll over the canvas area
         main_frame.bind_all("<MouseWheel>", on_mouse_wheel)
@@ -421,46 +423,56 @@ class FunctionRunnerApp:
         self.update_scrollregion()
 
     @log_entry_exit
-    def move_up(self):
-        if self.selected_row is not None and self.selected_row > 0:
-            idx = self.selected_row
-            self.function_rows[idx], self.function_rows[idx - 1] = (
-                self.function_rows[idx - 1],
-                self.function_rows[idx],
+    def swap_content(self, row1_idx, row2_idx):
+        """Swap content (filename, name_var, check_var) between two rows."""
+        fields_to_swap = ["filename", "name_var", "check_var"]
+        for field in fields_to_swap:
+            self.function_rows[row1_idx][field], self.function_rows[row2_idx][field] = (
+                self.function_rows[row2_idx][field],
+                self.function_rows[row1_idx][field],
             )
+
+    @log_entry_exit
+    def move_up(self):
+        """Move the selected row's content up, keeping index numbers fixed."""
+        if self.selected_row is not None and self.selected_row > 0:
+            self.swap_content(self.selected_row, self.selected_row - 1)
             self.selected_row -= 1
             self.reload_order()
 
     @log_entry_exit
     def move_down(self):
+        """Move the selected row's content down, keeping index numbers fixed."""
         if (
             self.selected_row is not None
             and self.selected_row < len(self.function_rows) - 1
         ):
-            idx = self.selected_row
-            self.function_rows[idx], self.function_rows[idx + 1] = (
-                self.function_rows[idx + 1],
-                self.function_rows[idx],
-            )
+            self.swap_content(self.selected_row, self.selected_row + 1)
             self.selected_row += 1
             self.reload_order()
 
     @log_entry_exit
     def move_top(self):
+        """Move the selected row's content to the top, keeping index numbers fixed."""
         if self.selected_row is not None and self.selected_row > 0:
-            row = self.function_rows.pop(self.selected_row)
-            self.function_rows.insert(0, row)
+            idx = self.selected_row
+            # Iteratively swap content up to the top
+            for i in range(idx, 0, -1):
+                self.swap_content(i, i - 1)
             self.selected_row = 0
             self.reload_order()
 
     @log_entry_exit
     def move_bottom(self):
+        """Move the selected row's content to the bottom, keeping index numbers fixed."""
         if (
             self.selected_row is not None
             and self.selected_row < len(self.function_rows) - 1
         ):
-            row = self.function_rows.pop(self.selected_row)
-            self.function_rows.append(row)
+            idx = self.selected_row
+            # Iteratively swap content down to the bottom
+            for i in range(idx, len(self.function_rows) - 1):
+                self.swap_content(i, i + 1)
             self.selected_row = len(self.function_rows) - 1
             self.reload_order()
 
@@ -476,77 +488,118 @@ class FunctionRunnerApp:
 
     @log_entry_exit
     def sort_alphabet(self):
+        """Sort row content alphabetically, keeping index numbers fixed."""
         if messagebox.askyesno("Sort by Alphabet", "Bạn có chắc muốn sắp xếp?"):
-            # Sort rows by filename, keeping all row components together
-            if self.is_sorted_asc:
-                self.function_rows.sort(
-                    key=lambda x: x["name_var"].get(), reverse=True
-                )  # Sắp xếp giảm dần
-                self.is_sorted_asc = False  # Cập nhật trạng thái sắp xếp
-            else:
-                self.function_rows.sort(
-                    key=lambda x: x["name_var"].get()
-                )  # Sắp xếp tăng dần
-                self.is_sorted_asc = True  # Cập nhật trạng thái sắp xếp
-            # Clear existing frames from the canvas to avoid duplication
-            for row in self.function_rows:
-                row["frame"].pack_forget()
-            # Re-pack frames in new order and update GUI
+            # Extract content for sorting
+            content_list = [
+                {
+                    "filename": row["filename"],
+                    "name_var": row["name_var"],
+                    "check_var": row["check_var"],
+                    "original_idx": i,
+                }
+                for i, row in enumerate(self.function_rows)
+            ]
+            # Sort content by filename
+            content_list.sort(
+                key=lambda x: x["name_var"].get(), reverse=not self.is_sorted_asc
+            )
+            self.is_sorted_asc = not self.is_sorted_asc
+
+            # Track selected content to update highlight
+            selected_content = (
+                self.function_rows[self.selected_row]["name_var"].get()
+                if self.selected_row is not None
+                else None
+            )
+
+            # Reassign content to original rows
+            for i, content in enumerate(content_list):
+                self.function_rows[i]["filename"] = content["filename"]
+                self.function_rows[i]["name_var"] = content["name_var"]
+                self.function_rows[i]["check_var"] = content["check_var"]
+
+            # Update highlight to follow selected content
+            if selected_content:
+                for i, row in enumerate(self.function_rows):
+                    if row["name_var"].get() == selected_content:
+                        self.selected_row = i
+                        break
+
             self.reload_order()
 
     @log_entry_exit
     def move_checked_to_top(self):
-        checked_rows = []
-        unchecked_rows = []
+        """Move checked rows' content to the top, keeping index numbers fixed."""
+        # Extract content, preserving original indices
+        content_list = [
+            {
+                "filename": row["filename"],
+                "name_var": row["name_var"],
+                "check_var": row["check_var"],
+                "is_checked": row["check_var"].get(),
+                "original_idx": i,
+            }
+            for i, row in enumerate(self.function_rows)
+        ]
+        # Separate checked and unchecked content
+        checked_content = [c for c in content_list if c["is_checked"]]
+        unchecked_content = [c for c in content_list if not c["is_checked"]]
 
-        # Separate checked and unchecked rows
-        for row in self.function_rows:
-            if row["check_var"].get():
-                checked_rows.append(row)
-            else:
-                unchecked_rows.append(row)
+        # Track selected content to update highlight
+        selected_content = (
+            self.function_rows[self.selected_row]["name_var"].get()
+            if self.selected_row is not None
+            else None
+        )
 
-        # Combine checked items at the top with unchecked ones below
-        self.function_rows = checked_rows + unchecked_rows
+        # Reassign content: checked at top, unchecked below
+        new_content = checked_content + unchecked_content
+        for i, content in enumerate(new_content):
+            self.function_rows[i]["filename"] = content["filename"]
+            self.function_rows[i]["name_var"] = content["name_var"]
+            self.function_rows[i]["check_var"] = content["check_var"]
 
-        # Clear existing frames from the canvas to avoid duplication
-        for row in self.function_rows:
-            row["frame"].pack_forget()
+        # Update highlight to follow selected content
+        if selected_content:
+            for i, row in enumerate(self.function_rows):
+                if row["name_var"].get() == selected_content:
+                    self.selected_row = i
+                    break
 
-        # Update the UI to reflect the new order
         self.reload_order()
 
     @log_entry_exit
     def reload_order(self):
-        # Configure style for highlighted frame
+        """Update the UI to reflect the current row order, keeping index numbers fixed."""
         style = ttk.Style()
         style.configure("Highlighted.TFrame", background="#d9d9d9")
         style.configure("TFrame", background="white")
 
-        # Update UI elements for each row, ensuring label_idx reflects position
+        # Clear existing frames
+        for row in self.function_rows:
+            row["frame"].pack_forget()
+
+        # Update UI elements for each row
         for idx, row in enumerate(self.function_rows, start=1):
-            # Synchronize filename with name_var
             row["filename"] = row["name_var"].get()
-            # Update label_idx to reflect current position (always ascending)
             row["label_idx"].config(text=f"No.{idx:03}")
-            # Update entry state based on edit mode
-            row["entry"].config(state="normal" if self.edit_mode else "readonly")
-            # Update run button command with current index
+            row["entry"].config(
+                textvariable=row["name_var"],
+                state="normal" if self.edit_mode else "readonly",
+            )
+            row["frame"].children["!checkbutton"].config(variable=row["check_var"])
             row["run_button"].config(
                 command=lambda nv=row["name_var"], r=idx - 1: (
                     self.select_row(r),
                     self.run_function(nv.get()),
                 )[-1]
             )
-            # Preserve check_var state
-            row["check_var"].set(row["check_var"].get())
-            # Re-pack the frame in the correct order
             row["frame"].pack(fill="x", pady=2)
 
-        # Remove any extra rows
+        # Remove extra rows
         while len(self.functions_frame.winfo_children()) > len(self.function_rows):
             self.functions_frame.winfo_children()[-1].pack_forget()
-        self.function_rows = self.function_rows[: len(self.function_rows)]
 
         # Update move buttons state
         for btn in self.move_buttons:
@@ -554,8 +607,6 @@ class FunctionRunnerApp:
 
         # Highlight selected row
         self.select_row(self.selected_row if self.selected_row is not None else -1)
-
-        # Update scroll region to reflect new layout
         self.update_scrollregion()
 
     @log_entry_exit
