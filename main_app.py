@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import functools
 import argparse
+import json
 
 
 FUNCTIONS_DIR = "functions"
@@ -99,6 +100,9 @@ class FunctionRunnerApp:
         self.root = root
         self.root.title("Function Runner App")
 
+        self.load_window_size()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
         self.function_files = []
         self.function_rows = []
 
@@ -117,6 +121,7 @@ class FunctionRunnerApp:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
+        # === Control Frame ===
         control_frame = ttk.Frame(main_frame)  # Change parent to main_frame
         control_frame.pack(pady=10)
 
@@ -143,7 +148,7 @@ class FunctionRunnerApp:
         )
         self.btn_add_function.grid(row=0, column=3, padx=5)
 
-        # New row for move buttons
+        # === Move Frame ===
         move_frame = ttk.Frame(main_frame)  # Change parent to main_frame
         move_frame.pack(pady=5)
 
@@ -151,18 +156,22 @@ class FunctionRunnerApp:
             move_frame, text="↑", width=6, command=self.move_up
         )
         self.btn_move_up.grid(row=0, column=0, padx=1)
+
         self.btn_move_down = ttk.Button(
             move_frame, text="↓", width=6, command=self.move_down
         )
         self.btn_move_down.grid(row=0, column=1, padx=1)
+
         self.btn_move_top = ttk.Button(
             move_frame, text="⇈", width=6, command=self.move_top
         )
         self.btn_move_top.grid(row=0, column=2, padx=1)
+
         self.btn_move_bottom = ttk.Button(
             move_frame, text="⇊", width=6, command=self.move_bottom
         )
         self.btn_move_bottom.grid(row=0, column=3, padx=1)
+
         self.btn_sort_alpha = ttk.Button(
             move_frame, text="Alphabet Sort", command=self.sort_alphabet
         )
@@ -178,10 +187,73 @@ class FunctionRunnerApp:
         for btn in self.move_buttons:
             btn.state(["disabled"])  # Initially disabled
 
-        self.functions_frame = ttk.Frame(main_frame)  # Change parent to main_frame
-        self.functions_frame.pack(pady=10, fill="x")
-        # Configure column weight for function name entry to expand
+        # === Functions Frame with Scroll ===
+        functions_outer_frame = ttk.Frame(main_frame)
+        functions_outer_frame.pack(pady=0, side="left", fill="both", expand=True)
+
+        self.functions_canvas = tk.Canvas(functions_outer_frame, highlightthickness=0)
+        self.functions_canvas.grid(row=0, column=0, sticky="nsew")
+
+        # Add padding to the scrollbar from the right edge
+        functions_scrollbar = ttk.Scrollbar(
+            functions_outer_frame,
+            orient="vertical",
+            command=self.functions_canvas.yview,
+        )
+        functions_scrollbar.grid(row=0, column=1, sticky="ns", padx=(0, 2), pady=(1, 2))
+
+        self.functions_canvas.configure(yscrollcommand=functions_scrollbar.set)
+
+        self.functions_frame = ttk.Frame(self.functions_canvas)
+        self.functions_window = self.functions_canvas.create_window(
+            (0, 0), window=self.functions_frame, anchor="nw"
+        )
+
         self.functions_frame.columnconfigure(2, weight=1)
+
+        # Make sure the canvas resizes when the frame content size changes
+        def on_canvas_configure(event):
+            # Adjust the width of the canvas when the window is resized
+            self.functions_canvas.itemconfig(self.functions_window, width=event.width)
+            # Update the scroll region to the bounding box of all the content
+            self.functions_canvas.configure(
+                scrollregion=self.functions_canvas.bbox("all")
+            )
+
+        # Bind to the configure event to update the scrollregion when the content changes
+        self.functions_canvas.bind("<Configure>", on_canvas_configure)
+
+        # Ensure functions_outer_frame expands properly
+        functions_outer_frame.grid_rowconfigure(0, weight=1)
+        functions_outer_frame.grid_columnconfigure(0, weight=1)
+
+    @log_entry_exit
+    def update_scrollregion(self):
+        self.functions_canvas.configure(scrollregion=self.functions_canvas.bbox("all"))
+
+    @log_entry_exit
+    def load_window_size(self):
+        try:
+            with open("window_size.json", "r") as f:
+                size_data = json.load(f)
+                width = size_data.get("width", 800)
+                height = size_data.get("height", 600)
+                self.root.geometry(f"{width}x{height}")
+        except FileNotFoundError:
+            self.root.geometry("800x600")
+
+    @log_entry_exit
+    def save_window_size(self):
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        size_data = {"width": width, "height": height}
+        with open("window_size.json", "w") as f:
+            json.dump(size_data, f)
+
+    @log_entry_exit
+    def on_close(self):
+        self.save_window_size()
+        self.root.destroy()
 
     @log_entry_exit
     def load_functions(self):
@@ -281,14 +353,7 @@ class FunctionRunnerApp:
 
     @log_entry_exit
     def add_new_function(self):
-        existing_numbers = [
-            int(f.split("_")[-1].split(".")[0])
-            for f in self.function_files
-            if f.startswith("function_")
-            and f.endswith(".py")
-            and f.split("_")[-1].split(".")[0].isdigit()
-        ]
-        next_number = max(existing_numbers, default=0) + 1
+        next_number = next_number = len(self.function_files) + 1
         new_filename = f"function_{next_number:03}.py"
         new_filepath = os.path.join(FUNCTIONS_DIR, new_filename)
         with open(new_filepath, "w") as f:
@@ -297,6 +362,7 @@ class FunctionRunnerApp:
             )
         self.function_files.append(new_filename)
         self.reload_order()
+        self.update_scrollregion()
 
     @log_entry_exit
     def move_up(self):
@@ -431,6 +497,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     args = parser.parse_args()
 
+    # Enable debug (entry/exit) log or not
     DEBUG_LOG = args.debug
 
     try:
