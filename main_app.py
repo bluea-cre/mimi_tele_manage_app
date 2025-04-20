@@ -121,61 +121,89 @@ class FunctionRunnerApp:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
+        # === Frist Row Frame ===
+        first_row_frame = ttk.Frame(main_frame)
+        first_row_frame.pack(pady=10)
         # === Control Frame ===
-        control_frame = ttk.Frame(main_frame)  # Change parent to main_frame
-        control_frame.pack(pady=10)
-
-        self.btn_check_all = ttk.Button(
-            control_frame, text="Check/Uncheck All", command=self.toggle_all
-        )
-        self.btn_check_all.grid(row=0, column=0, padx=5)
-
-        self.btn_run_all = ttk.Button(
-            control_frame, text="Run All", command=self.run_all
-        )
-        self.btn_run_all.grid(row=0, column=1, padx=5)
-
-        self.edit_save_button = ttk.Button(
-            control_frame, text="Edit", command=self.toggle_edit_mode
-        )
-        self.edit_save_button.grid(row=0, column=2, padx=5)
-        self.edit_tooltip = Tooltip(
-            self.edit_save_button, "Edit function names and order"
-        )
+        control_frame = ttk.Frame(first_row_frame)  # Change parent to main_frame
+        control_frame.grid(row=0, column=0)
 
         self.btn_add_function = ttk.Button(
             control_frame, text="Add New Function", command=self.add_new_function
         )
-        self.btn_add_function.grid(row=0, column=3, padx=5)
+        self.btn_add_function.grid(row=0, column=0, padx=5)
 
-        # === Move Frame ===
-        move_frame = ttk.Frame(main_frame)  # Change parent to main_frame
-        move_frame.pack(pady=5)
+        self.edit_save_button = ttk.Button(
+            control_frame, text="Edit", command=self.toggle_edit_mode
+        )
+        self.edit_save_button.grid(row=0, column=1, padx=5)
+        self.edit_tooltip = Tooltip(
+            self.edit_save_button, "Edit function names and order"
+        )
 
+        # === Second Row Frame ===
+        second_row_frame = ttk.Frame(main_frame)
+        second_row_frame.pack(pady=(0, 20), fill="x")  # Ensure frame fills horizontally
+
+        # Make the columns in second_row_frame adjust dynamically
+        second_row_frame.grid_columnconfigure(
+            0, weight=0
+        )  # No expansion for the first column (Check/Uncheck)
+        second_row_frame.grid_columnconfigure(
+            1, weight=1
+        )  # Middle column for move_frame to expand and center
+        second_row_frame.grid_columnconfigure(
+            2, weight=0
+        )  # No expansion for the third column (Run All)
+
+        # === Check/Uncheck Button on the Left ===
+        self.btn_check_all = ttk.Button(
+            second_row_frame, text="Check/Uncheck All", command=self.toggle_all
+        )
+        self.btn_check_all.grid(
+            row=0, column=0, padx=(10, 10), sticky="w"
+        )  # Align to the left (sticky="w")
+
+        # === Run All Button on the Right ===
+        self.btn_run_all = ttk.Button(
+            second_row_frame, text="Run All", command=self.run_all
+        )
+        self.btn_run_all.grid(
+            row=0, column=2, padx=(10, 34), sticky="e"
+        )  # Align to the right (sticky="e")
+
+        # === Move Frame in the Center ===
+        move_frame = ttk.Frame(second_row_frame)  # Change parent to second_row_frame
+        move_frame.grid(
+            row=0, column=1, padx=(10, 10)
+        )  # "ew" makes it stretch horizontally (center)
+
+        # Move buttons inside move_frame
         self.btn_move_up = ttk.Button(
             move_frame, text="↑", width=6, command=self.move_up
         )
-        self.btn_move_up.grid(row=0, column=0, padx=1)
+        self.btn_move_up.grid(row=0, column=1, padx=1, sticky="ew")
 
         self.btn_move_down = ttk.Button(
             move_frame, text="↓", width=6, command=self.move_down
         )
-        self.btn_move_down.grid(row=0, column=1, padx=1)
+        self.btn_move_down.grid(row=0, column=2, padx=1)
 
         self.btn_move_top = ttk.Button(
             move_frame, text="⇈", width=6, command=self.move_top
         )
-        self.btn_move_top.grid(row=0, column=2, padx=1)
+        self.btn_move_top.grid(row=0, column=3, padx=1)
 
         self.btn_move_bottom = ttk.Button(
             move_frame, text="⇊", width=6, command=self.move_bottom
         )
-        self.btn_move_bottom.grid(row=0, column=3, padx=1)
+        self.btn_move_bottom.grid(row=0, column=4, padx=1)
 
         self.btn_sort_alpha = ttk.Button(
-            move_frame, text="Alphabet Sort", command=self.sort_alphabet
+            move_frame, text="Sort", width=8, command=self.sort_alphabet
         )
-        self.btn_sort_alpha.grid(row=0, column=4, padx=5)
+        self.btn_sort_alpha.grid(row=0, column=5, padx=1)
+        self.edit_tooltip = Tooltip(self.btn_sort_alpha, "Sort by Alphabet")
 
         self.move_buttons = [
             self.btn_move_up,
