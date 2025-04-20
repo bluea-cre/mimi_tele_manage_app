@@ -103,7 +103,6 @@ class FunctionRunnerApp:
         self.load_window_size()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.function_files = []
         self.function_rows = []
 
         self.edit_mode = False
@@ -199,18 +198,21 @@ class FunctionRunnerApp:
         )
         self.btn_move_bottom.grid(row=0, column=4, padx=1)
 
-        self.btn_sort_alpha = ttk.Button(
-            move_frame, text="Sort", width=8, command=self.sort_alphabet
+        # === Sort Dropdown (Combobox) ===
+        sort_options = ["Sort Alphabet", "Move Checked to Top"]  # New options
+        self.sort_combobox = ttk.Combobox(
+            move_frame, values=sort_options, state="readonly", width=20
         )
-        self.btn_sort_alpha.grid(row=0, column=5, padx=1)
-        self.edit_tooltip = Tooltip(self.btn_sort_alpha, "Sort by Alphabet")
+        self.sort_combobox.grid(row=0, column=6, padx=5)
+        self.sort_combobox.bind("<<ComboboxSelected>>", self.on_sort_option_selected)
+        self.sort_tooltip = Tooltip(self.sort_combobox, "Sort by option")
 
         self.move_buttons = [
             self.btn_move_up,
             self.btn_move_down,
             self.btn_move_top,
             self.btn_move_bottom,
-            self.btn_sort_alpha,
+            self.sort_combobox,
         ]
         for btn in self.move_buttons:
             btn.state(["disabled"])  # Initially disabled
@@ -288,15 +290,22 @@ class FunctionRunnerApp:
         if not os.path.exists(FUNCTIONS_DIR):
             os.makedirs(FUNCTIONS_DIR)
         all_files = [f for f in os.listdir(FUNCTIONS_DIR) if f.endswith(".py")]
+        ordered_files = []
         if os.path.exists(ORDER_FILE):
             with open(ORDER_FILE, "r") as f:
                 ordered_files = [line.strip() for line in f if line.strip()]
-            self.function_files = [f for f in ordered_files if f in all_files]
+            # Filter files that still exist
+            ordered_files = [f for f in ordered_files if f in all_files]
+            # Add any new files not in .order
             for f in all_files:
-                if f not in self.function_files:
-                    self.function_files.append(f)
+                if f not in ordered_files:
+                    ordered_files.append(f)
         else:
-            self.function_files = sorted(all_files)
+            ordered_files = sorted(all_files)
+        # Populate function_rows based on ordered files
+        self.function_rows = []
+        for idx, filename in enumerate(ordered_files, start=1):
+            self.add_function_row(idx, filename)
         self.reload_order()
 
     @log_entry_exit
@@ -381,14 +390,14 @@ class FunctionRunnerApp:
 
     @log_entry_exit
     def add_new_function(self):
-        next_number = next_number = len(self.function_files) + 1
+        next_number = len(self.function_rows) + 1
         new_filename = f"function_{next_number:03}.py"
         new_filepath = os.path.join(FUNCTIONS_DIR, new_filename)
         with open(new_filepath, "w") as f:
             f.write(
                 f'def main():\n    print("Running new function: File name: {new_filename}")\n'
             )
-        self.function_files.append(new_filename)
+        self.add_function_row(len(self.function_rows) + 1, new_filename)
         self.reload_order()
         self.update_scrollregion()
 
@@ -396,9 +405,9 @@ class FunctionRunnerApp:
     def move_up(self):
         if self.selected_row is not None and self.selected_row > 0:
             idx = self.selected_row
-            self.function_files[idx], self.function_files[idx - 1] = (
-                self.function_files[idx - 1],
-                self.function_files[idx],
+            self.function_rows[idx], self.function_rows[idx - 1] = (
+                self.function_rows[idx - 1],
+                self.function_rows[idx],
             )
             self.selected_row -= 1
             self.reload_order()
@@ -407,12 +416,12 @@ class FunctionRunnerApp:
     def move_down(self):
         if (
             self.selected_row is not None
-            and self.selected_row < len(self.function_files) - 1
+            and self.selected_row < len(self.function_rows) - 1
         ):
             idx = self.selected_row
-            self.function_files[idx], self.function_files[idx + 1] = (
-                self.function_files[idx + 1],
-                self.function_files[idx],
+            self.function_rows[idx], self.function_rows[idx + 1] = (
+                self.function_rows[idx + 1],
+                self.function_rows[idx],
             )
             self.selected_row += 1
             self.reload_order()
@@ -420,8 +429,8 @@ class FunctionRunnerApp:
     @log_entry_exit
     def move_top(self):
         if self.selected_row is not None and self.selected_row > 0:
-            filename = self.function_files.pop(self.selected_row)
-            self.function_files.insert(0, filename)
+            row = self.function_rows.pop(self.selected_row)
+            self.function_rows.insert(0, row)
             self.selected_row = 0
             self.reload_order()
 
@@ -429,24 +438,64 @@ class FunctionRunnerApp:
     def move_bottom(self):
         if (
             self.selected_row is not None
-            and self.selected_row < len(self.function_files) - 1
+            and self.selected_row < len(self.function_rows) - 1
         ):
-            filename = self.function_files.pop(self.selected_row)
-            self.function_files.append(filename)
-            self.selected_row = len(self.function_files) - 1
+            row = self.function_rows.pop(self.selected_row)
+            self.function_rows.append(row)
+            self.selected_row = len(self.function_rows) - 1
             self.reload_order()
+
+    # Handle sort options selected
+    @log_entry_exit
+    def on_sort_option_selected(self, event):
+        selected_option = self.sort_combobox.get()
+        print(f"Selected option {selected_option}")
+        if selected_option == "Sort Alphabet":
+            self.sort_alphabet()
+        elif selected_option == "Move Checked to Top":
+            self.move_checked_to_top()
 
     @log_entry_exit
     def sort_alphabet(self):
         if messagebox.askyesno("Sort by Alphabet", "Bạn có chắc muốn sắp xếp?"):
-            # Kiểm tra xem danh sách hiện tại đã được sắp xếp theo thứ tự tăng dần hay chưa
+            # Sort rows by filename, keeping all row components together
             if self.is_sorted_asc:
-                self.function_files.sort(reverse=True)  # Sắp xếp giảm dần
+                self.function_rows.sort(
+                    key=lambda x: x["name_var"].get(), reverse=True
+                )  # Sắp xếp giảm dần
                 self.is_sorted_asc = False  # Cập nhật trạng thái sắp xếp
             else:
-                self.function_files.sort()  # Sắp xếp tăng dần
+                self.function_rows.sort(
+                    key=lambda x: x["name_var"].get()
+                )  # Sắp xếp tăng dần
                 self.is_sorted_asc = True  # Cập nhật trạng thái sắp xếp
+            # Clear existing frames from the canvas to avoid duplication
+            for row in self.function_rows:
+                row["frame"].pack_forget()
+            # Re-pack frames in new order and update GUI
             self.reload_order()
+
+    @log_entry_exit
+    def move_checked_to_top(self):
+        checked_rows = []
+        unchecked_rows = []
+
+        # Separate checked and unchecked rows
+        for row in self.function_rows:
+            if row["check_var"].get():
+                checked_rows.append(row)
+            else:
+                unchecked_rows.append(row)
+
+        # Combine checked items at the top with unchecked ones below
+        self.function_rows = checked_rows + unchecked_rows
+
+        # Clear existing frames from the canvas to avoid duplication
+        for row in self.function_rows:
+            row["frame"].pack_forget()
+
+        # Update the UI to reflect the new order
+        self.reload_order()
 
     @log_entry_exit
     def reload_order(self):
@@ -455,27 +504,30 @@ class FunctionRunnerApp:
         style.configure("Highlighted.TFrame", background="#d9d9d9")
         style.configure("TFrame", background="white")
 
-        for idx, filename in enumerate(self.function_files, start=1):
-            if idx - 1 < len(self.function_rows):
-                row = self.function_rows[idx - 1]
-                row["filename"] = filename
-                row["name_var"].set(filename)
-                row["label_idx"].config(text=f"No.{idx:03}")
-                row["entry"].config(state="normal" if self.edit_mode else "readonly")
-                row["run_button"].config(
-                    command=lambda nv=row["name_var"], r=idx - 1: (
-                        self.select_row(r),
-                        self.run_function(nv.get()),
-                    )[-1]
-                )
-                row["check_var"].set(row["check_var"].get())
-            else:
-                self.add_function_row(idx, filename)
+        # Update UI elements for each row, ensuring label_idx reflects position
+        for idx, row in enumerate(self.function_rows, start=1):
+            # Synchronize filename with name_var
+            row["filename"] = row["name_var"].get()
+            # Update label_idx to reflect current position (always ascending)
+            row["label_idx"].config(text=f"No.{idx:03}")
+            # Update entry state based on edit mode
+            row["entry"].config(state="normal" if self.edit_mode else "readonly")
+            # Update run button command with current index
+            row["run_button"].config(
+                command=lambda nv=row["name_var"], r=idx - 1: (
+                    self.select_row(r),
+                    self.run_function(nv.get()),
+                )[-1]
+            )
+            # Preserve check_var state
+            row["check_var"].set(row["check_var"].get())
+            # Re-pack the frame in the correct order
+            row["frame"].pack(fill="x", pady=2)
 
-        for idx in range(len(self.function_files), len(self.function_rows)):
-            self.function_rows[idx]["frame"].pack_forget()
-
-        self.function_rows = self.function_rows[: len(self.function_files)]
+        # Remove any extra rows
+        while len(self.functions_frame.winfo_children()) > len(self.function_rows):
+            self.functions_frame.winfo_children()[-1].pack_forget()
+        self.function_rows = self.function_rows[: len(self.function_rows)]
 
         # Update move buttons state
         for btn in self.move_buttons:
@@ -483,6 +535,9 @@ class FunctionRunnerApp:
 
         # Highlight selected row
         self.select_row(self.selected_row if self.selected_row is not None else -1)
+
+        # Update scroll region to reflect new layout
+        self.update_scrollregion()
 
     @log_entry_exit
     def toggle_edit_mode(self):
@@ -498,7 +553,6 @@ class FunctionRunnerApp:
 
     @log_entry_exit
     def save_order_and_names(self):
-        new_function_files = []
         for row in self.function_rows:
             new_name = (
                 row["name_var"].get().replace(" ", "_")
@@ -512,12 +566,10 @@ class FunctionRunnerApp:
                 os.rename(old_path, new_path)
                 print(f"Renamed {old_name} → {new_name}")
                 row["filename"] = new_name
-            new_function_files.append(new_name)
-        self.function_files = new_function_files
         with open(ORDER_FILE, "w") as f:
-            for filename in self.function_files:
-                f.write(filename + "\n")
-        print("Functions saved:", self.function_files)
+            for row in self.function_rows:
+                f.write(row["filename"] + "\n")
+        print("Functions saved:", [row["filename"] for row in self.function_rows])
 
 
 if __name__ == "__main__":
