@@ -5,6 +5,21 @@ from tkinter import ttk, messagebox
 import functools
 import argparse
 import json
+import logging
+
+# Global flag for logging to file
+LOG_FILE = "log_file.txt"
+
+# Set up logging configuration
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.DEBUG,
+    format="%(asctime)s - %(message)s",
+)
+
+
+def log_to_file(message):
+    logging.debug(message)
 
 
 FUNCTIONS_DIR = "functions"
@@ -44,16 +59,26 @@ def log_entry_exit(func):
             global reset_color
             func_color = highlight_color[CALL_DEEP % len(highlight_color)]
             indent = "    " * CALL_DEEP
-            print(
-                f"{indent}==> {entry_color}Entry: {func_color}{func.__name__}{reset_color} with arguments: {args}, {kwargs}"
+
+            # Create log entry for function entry
+            entry_message = f"{indent}==> {entry_color}Entry: {func_color}{func.__name__}{reset_color} with arguments: {args}, {kwargs}"
+            print(entry_message)
+            entry_message = (
+                f"{indent}==> Entry: {func.__name__} with arguments: {args}, {kwargs}"
             )
+            log_to_file(entry_message)  # Log to file
+
             CALL_DEEP += 1
             result = func(*args, **kwargs)
             CALL_DEEP -= 1
+
             indent = "    " * CALL_DEEP
-            print(
-                f"{indent}<== {exit_color}Exit: {func_color}{func.__name__}{reset_color} with result: {result}"
-            )
+
+            # Create log entry for function exit
+            exit_message = f"{indent}<== {exit_color}Exit: {func_color}{func.__name__}{reset_color} with result: {result}"
+            print(exit_message)
+            exit_message = f"{indent}<== Exit: {func.__name__} with result: {result}"
+            log_to_file(exit_message)  # Log to file
         else:
             result = func(*args, **kwargs)
         return result
