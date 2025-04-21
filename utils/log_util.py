@@ -4,7 +4,7 @@ import datetime
 import os
 
 
-from constants import LOG_FILE
+from cfg.constants import LOG_FILE
 
 
 # Define public API
@@ -49,7 +49,7 @@ os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 logging.basicConfig(
     filename=LOG_FILE,
     level=DEBUG,
-    format="%(asctime)s %(message)s [%(filename)s:%(lineno)d - %(funcName)s()]",
+    format="%(asctime)s %(message)s [%(filename)s:%(lineno)d = %(funcName)s()]",
     encoding="utf-8",
 )
 

@@ -3,7 +3,7 @@ from tkinter import ttk
 from typing import Callable, Dict, Optional
 from gui.utils.tooltip import Tooltip
 from gui.frame import CustomFrame
-from constants import SORT_OPTIONS
+from cfg.constants import SORT_OPTIONS
 from utils.log_util import *
 
 

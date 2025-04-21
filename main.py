@@ -12,7 +12,7 @@ from utils.log_util import (
     entrylog_s2i,
     set_entry_log,
 )
-from app import FunctionRunnerApp  # Absolute import
+from core.app import FunctionRunnerApp  # Absolute import
 from utils.log_util import *
 
 

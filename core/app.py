@@ -1,8 +1,8 @@
 import tkinter as tk
 from typing import Optional
 from gui.ui import UI
-from function_manager import FunctionManager
-from file_handler import FileHandler
+from core.function_manager import FunctionManager
+from core.file_handler import FileHandler
 from gui.utils.tooltip import Tooltip
 from utils.log_util import *
 

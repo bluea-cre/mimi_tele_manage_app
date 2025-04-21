@@ -1,7 +1,7 @@
 import json
 import os
 from typing import List, Dict
-from constants import ORDER_FILE, WINDOW_SIZE_FILE, DEFAULT_WINDOW_SIZE, FUNCTIONS_DIR
+from cfg.constants import ORDER_FILE, WINDOW_SIZE_FILE, DEFAULT_WINDOW_SIZE, FUNCTIONS_DIR
 from utils.log_util import *
 
 

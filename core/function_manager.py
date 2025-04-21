@@ -2,7 +2,7 @@ import importlib.util
 import os
 from typing import List, Dict, Optional
 from tkinter import messagebox
-from constants import FUNCTIONS_DIR
+from cfg.constants import FUNCTIONS_DIR
 from utils.log_util import *
 
 
@@ -17,13 +17,13 @@ class FunctionManager:
     @log_entry_exit
     def load_functions(self) -> None:
         """Load functions from files and populate rows."""
-        from file_handler import FileHandler
+        from core.file_handler import FileHandler
 
         ordered_files = FileHandler.load_function_files()
         self.function_rows = []
         for idx, filename in enumerate(ordered_files, start=1):
             self.add_function_row(idx, filename)
-        from file_handler import FileHandler
+        from core.file_handler import FileHandler
 
         FileHandler.update_order_file(self.function_rows)
         self.app.ui.reload_order()
@@ -207,7 +207,7 @@ class FunctionManager:
     @log_entry_exit
     def save_order_and_names(self) -> None:
         """Save function order and rename files as needed."""
-        from file_handler import FileHandler
+        from core.file_handler import FileHandler
 
         for row in self.function_rows:
             new_name = row["name_var"].get().replace(" ", "_")
