@@ -2,88 +2,17 @@ import os
 import importlib.util
 import tkinter as tk
 from tkinter import ttk, messagebox
-import functools
 import argparse
 import json
-import logging
 
-# Global flag for logging to file
-LOG_FILE = "log_file.txt"
-
-# Set up logging configuration
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.DEBUG,
-    format="%(asctime)s - %(message)s",
-)
-
-
-def log_to_file(message):
-    logging.debug(message)
-
+from utils.log_util import *
 
 FUNCTIONS_DIR = "functions"
 ORDER_FILE = os.path.join(FUNCTIONS_DIR, ".order")
 
-DEBUG_LOG = False
-CALL_DEEP = 0
-
-# ANSI escape code to change text color
-entry_color = "\033[94m"  # Blue color for entry
-exit_color = "\033[91m"  # Red color for exit
-highlight_color = [
-    "\033[92m",  # Green
-    "\033[93m",  # Yellow
-    "\033[95m",  # Magenta
-    "\033[96m",  # Cyan
-    "\033[92m",  # Light Green
-    "\033[93m",  # Light Yellow
-    "\033[95m",  # Light Magenta
-    "\033[96m",  # Light Cyan
-]
-reset_color = "\033[0m"  # Reset to normal color
-
 
 def empty_function():
-    print("Empty function\n")
-
-
-def log_entry_exit(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        if DEBUG_LOG:
-            global CALL_DEEP
-            global entry_color
-            global exit_color
-            global highlight_color
-            global reset_color
-            func_color = highlight_color[CALL_DEEP % len(highlight_color)]
-            indent = "    " * CALL_DEEP
-
-            # Create log entry for function entry
-            entry_message = f"{indent}==> {entry_color}Entry: {func_color}{func.__name__}{reset_color} with arguments: {args}, {kwargs}"
-            print(entry_message)
-            entry_message = (
-                f"{indent}==> Entry: {func.__name__} with arguments: {args}, {kwargs}"
-            )
-            log_to_file(entry_message)  # Log to file
-
-            CALL_DEEP += 1
-            result = func(*args, **kwargs)
-            CALL_DEEP -= 1
-
-            indent = "    " * CALL_DEEP
-
-            # Create log entry for function exit
-            exit_message = f"{indent}<== {exit_color}Exit: {func_color}{func.__name__}{reset_color} with result: {result}"
-            print(exit_message)
-            exit_message = f"{indent}<== Exit: {func.__name__} with result: {result}"
-            log_to_file(exit_message)  # Log to file
-        else:
-            result = func(*args, **kwargs)
-        return result
-
-    return wrapper
+    LOGI("Empty function\n")
 
 
 class Tooltip:
@@ -142,8 +71,10 @@ class FunctionRunnerApp:
     @log_entry_exit
     def create_widgets(self):
         # Add main_frame to wrap all UI with margins
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+        background_frame = ttk.Frame(self.root)
+        background_frame.pack(padx=0, pady=0, fill="both", expand=True)
+        main_frame = ttk.Frame(background_frame)
+        main_frame.pack(padx=40, pady=(5, 20), fill="both", expand=True)
 
         # === First Row Frame ===
         first_row_frame = ttk.Frame(main_frame)
@@ -230,6 +161,7 @@ class FunctionRunnerApp:
         )
         self.sort_combobox.grid(row=0, column=6, padx=5)
         self.sort_combobox.bind("<<ComboboxSelected>>", self.on_sort_option_selected)
+        self.sort_combobox.set("Select a sort option")  # <-- Default text
         self.sort_tooltip = Tooltip(self.sort_combobox, "Sort by option")
 
         self.move_buttons = [
@@ -255,7 +187,7 @@ class FunctionRunnerApp:
             orient="vertical",
             command=self.functions_canvas.yview,
         )
-        functions_scrollbar.grid(row=0, column=1, sticky="ns", padx=(0, 2), pady=(1, 2))
+        functions_scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 2), pady=(1, 0))
 
         self.functions_canvas.configure(yscrollcommand=functions_scrollbar.set)
 
@@ -430,9 +362,9 @@ class FunctionRunnerApp:
             if hasattr(module, "main"):
                 module.main()
             else:
-                print(f"{filename} has no main() function.")
+                LOGW(f"{filename} has no main() function.")
         except Exception as e:
-            print(f"Failed to run {filename}: {e}")
+            LOGF(f"Failed to run {filename}: {e}")
 
     @log_entry_exit
     def add_new_function(self):
@@ -441,7 +373,7 @@ class FunctionRunnerApp:
         new_filepath = os.path.join(FUNCTIONS_DIR, new_filename)
         with open(new_filepath, "w") as f:
             f.write(
-                f'def main():\n    print("Running new function: File name: {new_filename}")\n'
+                f'from utils.log_util import *\n\n\ndef main():\n    LOGI("Running new function: File name: {new_filename}")\n'
             )
         self.add_function_row(len(self.function_rows) + 1, new_filename)
         self.reload_order()
@@ -505,7 +437,7 @@ class FunctionRunnerApp:
     @log_entry_exit
     def on_sort_option_selected(self, event):
         selected_option = self.sort_combobox.get()
-        print(f"Selected option {selected_option}")
+        LOGI(f"Selected option {selected_option}")
         if selected_option == "Sort Alphabet":
             self.sort_alphabet()
         elif selected_option == "Move Checked to Top":
@@ -659,24 +591,44 @@ class FunctionRunnerApp:
             new_path = os.path.join(FUNCTIONS_DIR, new_name)
             if old_name != new_name:
                 os.rename(old_path, new_path)
-                print(f"Renamed {old_name} → {new_name}")
+                LOGI(f"Renamed {old_name} → {new_name}")
                 row["filename"] = new_name
 
         self.update_order_file()
-        print("Functions saved:", [row["filename"] for row in self.function_rows])
+        LOGI("Functions saved:", [row["filename"] for row in self.function_rows])
 
 
 if __name__ == "__main__":
+    LOGI(
+        "<====================================== Start Function Runner App ======================================>"
+    )
     parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument(
+        "--loglevel",
+        type=str,
+        default=None,
+        help="Set log level: DEBUG, INFO, WARN, ERROR, VERBOSE, FATAL",
+    )
+    parser.add_argument(
+        "--entrylog",
+        type=str,
+        default=None,
+        help="Enable entry exit log: 1, Yes, yes, Y, y, Enable, enable, True, true, T, t",
+    )
     args = parser.parse_args()
 
-    # Enable debug (entry/exit) log or not
-    DEBUG_LOG = args.debug
+    log_level = loglevel_s2i(args.loglevel)
+    set_log_level(log_level)
+    entry_log = entrylog_s2i(args.entrylog)
+    set_entry_log(entry_log)
 
     try:
         root = tk.Tk()
         app = FunctionRunnerApp(root)
         root.mainloop()
     except Exception as e:
-        print(f"Application failed to start: {e}")
+        LOGI(f"Application failed to start: {e}")
+
+    LOGI(
+        "<====================================== Close Function Runner App ======================================>"
+    )
