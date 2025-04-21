@@ -159,7 +159,6 @@ class UI:
             )
 
         # Configure canvas resizing
-        @log_entry_exit
         def on_canvas_configure(event):
             # Update the width of the canvas window to match canvas width
             self.functions_canvas.itemconfig(canvas_window_id, width=event.width)
@@ -173,7 +172,6 @@ class UI:
         self.functions_frame.bind("<Configure>", update_scroll_region)
 
         # Mouse wheel scrolling
-        @log_entry_exit
         def on_mouse_wheel(event):
             if self.functions_canvas.winfo_viewable():
                 # Only scroll if there is content to scroll
