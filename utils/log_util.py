@@ -4,6 +4,9 @@ import datetime
 import os
 
 
+from constants import LOG_FILE
+
+
 # Define public API
 __all__ = [
     "set_entry_log",
@@ -41,16 +44,12 @@ _gEntryExitLog = False
 _gCallDepth = 0
 
 
-# Global flag for logging to file
-LOG_FILE = "logs/log_file.txt"
-
-
 # Setup basic file logging
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 logging.basicConfig(
     filename=LOG_FILE,
     level=DEBUG,
-    format="%(message)s",
+    format="%(asctime)s %(message)s [%(filename)s:%(lineno)d - %(funcName)s()]",
     encoding="utf-8",
 )
 
@@ -166,13 +165,13 @@ def log(*args, level=INFO):
         # Convert all arguments to strings, ensuring that even complex types are captured
         message = " ".join([str(arg) for arg in args])
 
-        formatted_message = f"[{time_stamp}] [{level_name}] {message}"
+        formatted_message = f"[{level_name}] {message}"
 
         # Print to console
         print(formatted_message)
 
         # Log to file
-        logging.debug(formatted_message)
+        logging.log(logging.INFO, formatted_message, stacklevel=3)
 
 
 def logee(message, level=ENTRY_EXIT):
@@ -181,10 +180,10 @@ def logee(message, level=ENTRY_EXIT):
     """
     time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     level_name = get_level_name(level)
-    formatted_message = f"[{time_stamp}] [{level_name}] {message}"
+    formatted_message = f"[{level_name}] {message}"
 
     # Log to file
-    logging.debug(formatted_message)
+    logging.log(logging.INFO, formatted_message, stacklevel=5)
 
 
 # Predefined short log functions for each level
@@ -241,10 +240,10 @@ def log_entry_exit(func):
             indent = "    " * _gCallDepth
 
             # Log function entry
-            console_entry_message = f"{indent}==> {entry_color}Entry: {func_color}{func.__name__}{reset_color} with args: {args}, kwargs: {kwargs}"
+            console_entry_message = f"{indent}==> {entry_color}Entry: {func_color}{func.__name__}{reset_color}():"  # with args: {args}, kwargs: {kwargs}"
             print(console_entry_message)
 
-            file_entry_message = f"{indent}==> Entry: {func.__name__} with args: {args}, kwargs: {kwargs}"
+            file_entry_message = f"{indent}==> Entry: {func.__name__}():"  # with args: {args}, kwargs: {kwargs}"
             logee(file_entry_message)
 
             _gCallDepth += 1
@@ -254,10 +253,12 @@ def log_entry_exit(func):
             indent = "    " * _gCallDepth
 
             # Log function exit
-            console_exit_message = f"{indent}<== {exit_color}Exit: {func_color}{func.__name__}{reset_color} returning: {result}"
+            console_exit_message = f"{indent}<== {exit_color}Exit: {func_color}{func.__name__}{reset_color}():"  # returning: {result}"
             print(console_exit_message)
 
-            file_exit_message = f"{indent}<== Exit: {func.__name__} returning: {result}"
+            file_exit_message = (
+                f"{indent}<== Exit: {func.__name__}():"  # returning: {result}"
+            )
             logee(file_exit_message)
         else:
             result = func(*args, **kwargs)
