@@ -1,5 +1,3 @@
-import sys
-import os
 import tkinter as tk
 from core.app import FunctionRunnerApp  # Absolute import
 from utils.log_util import LOGI
