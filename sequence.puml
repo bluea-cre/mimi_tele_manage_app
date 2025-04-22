@@ -1,0 +1,22 @@
+@startuml sequence_diagram
+actor User
+participant "main.py" as MainApp
+participant "FunctionRunnerApp" as App
+participant "file_handler.py" as FileHandler
+participant "function_manager.py" as FuncManager
+participant "log_util.py" as LogUtil
+
+User -> MainApp: Run application
+MainApp -> App: Initialize GUI
+App -> FileHandler: Load window size
+FileHandler -> App: Return window size
+App -> FuncManager: Load functions
+FuncManager -> App: Return function list
+App -> User: Display GUI
+
+User -> App: Interact with GUI
+App -> FileHandler: Save updated data
+FileHandler -> App: Confirm save
+App -> LogUtil: Log actions
+LogUtil -> log_file.txt: Write log entry
+@enduml

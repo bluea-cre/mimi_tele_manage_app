@@ -137,16 +137,11 @@ def entrylog_s2i(entrylog_str):
 
     if entrylog_str in (
         "1",
-        "Yes",
-        "yes",
+        "YES",
         "Y",
-        "y",
-        "Enable",
-        "enable",
-        "True",
-        "true",
+        "ENABLE",
+        "TRUE",
         "T",
-        "t",
     ):
         return True
     else:

@@ -12,17 +12,28 @@ def parse_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Function Runner Application")
     parser.add_argument(
+        "-ll",
         "--loglevel",
         type=str,
         default=None,
         help="Set log level: DEBUG, INFO, WARN, ERROR, VERBOSE, FATAL",
+        choices=[
+            "DEBUG",
+            "INFO",
+            "WARN",
+            "ERROR",
+            "VERBOSE",
+            "FATAL",
+        ],  # Optional: restrict choices
     )
     parser.add_argument(
+        "-ee",
         "--entrylog",
         type=str,
         default=None,
         help="Enable entry/exit log: 1, Yes, yes, Y, y, Enable, enable, True, true, T, t",
     )
+
     try:
         return parser.parse_args()
     except argparse.ArgumentError as e:
