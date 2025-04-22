@@ -1,16 +1,21 @@
 import importlib.util
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, TYPE_CHECKING
 from tkinter import messagebox
 from cfg.constants import FUNCTIONS_DIR
 from utils.log_util import *
 
 
+if TYPE_CHECKING:
+    from core.app import FunctionRunnerApp  # Only imported for type checking
+
+
+# Avoid circular import issues by using a forward reference
 class FunctionManager:
     """Manages function loading, execution, and sorting."""
 
     @log_entry_exit
-    def __init__(self, app: "FunctionRunnerApp"): # type: ignore
+    def __init__(self, app: "FunctionRunnerApp"):  # Use a forward reference
         self.app = app
         self.function_rows: List[Dict] = []
 

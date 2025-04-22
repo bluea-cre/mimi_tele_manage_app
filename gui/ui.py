@@ -1,16 +1,21 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 from gui.utils.tooltip import Tooltip
 from gui.frame import CustomFrame
 from cfg.constants import SORT_OPTIONS
 from utils.log_util import *
 
 
+if TYPE_CHECKING:
+    from core.app import FunctionRunnerApp  # Only imported for type checking
+
+
+# Avoid circular import issues by using a forward reference
 class UI:
     """Manages the creation and updating of UI components."""
 
-    def __init__(self, root: tk.Tk, app: "FunctionRunnerApp"):  # type: ignore
+    def __init__(self, root: tk.Tk, app: "FunctionRunnerApp"):  # Use a forward referenc
         self.root = root
         self.app = app
         self.functions_frame: Optional[CustomFrame] = None
